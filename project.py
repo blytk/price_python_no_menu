@@ -1,14 +1,27 @@
 import json
 import re
 import requests
+import os
+import sys
 
 
 def main():
+    # I check if the program is executed with an argument, in which case we will execute current_price() passing the first additional arg
+    # This way the program can be quickly used to check current price and exit
+    clear_terminal()
+    if len(sys.argv) > 1:
+        arg_token = sys.argv[1]
+        check_current_price(arg_token)
+        print()
+        sys.exit()
+
     print_welcome()
     menu()
+    return 0
 
 # print_welcome() just prints a welcome message
 def print_welcome():
+    # clear_terminal()
     print()
     print("*" * 80)
     print("*     /$$$$$$$        /$$$$$$$        /$$$$$$        /$$$$$$        /$$$$$$$$  *")
@@ -32,6 +45,7 @@ def print_menu():
     print("5 - CHECK CURRENT PRICE")
     print("6 - CHECK BTC PRICE")
     print("7 - EXIT")
+    return 0
 
 # menu() will take care of the flow and execute different functions for each of the menu options selected by the user
 def menu():
@@ -40,7 +54,7 @@ def menu():
         print_menu()
         user_input = input("Enter a digit to choose an option: ")
         if user_input == "7":
-            print("Goodbye")
+            clear_terminal()
             return 0
         if user_input == "1":
             check_api_status()
@@ -57,6 +71,7 @@ def menu():
 
 
 def check_api_status():
+    clear_terminal()
     # We create a requests response object and send a get request to the ping api address
     response = requests.get("https://api.coingecko.com/api/v3/ping")
     # The response object will store an status code. We need to receive a status code 200 in order for the API to be working ok
@@ -74,6 +89,7 @@ def check_api_status():
 
 
 def download_token_list():
+    clear_terminal()
     # create a file on the hard drive with a list of all available tokens
     response = requests.get("https://api.coingecko.com/api/v3/coins/list?include_platform=false")
     # I should receive a list of dictionaries, each one with the keys "id", "symbol", "name"
@@ -100,9 +116,11 @@ def download_token_list():
 
 
 def search_token():
+    clear_terminal()
     # Get user input to search for a token in the downloaded list tokens.txt
     print_blank_space()
     user_input = input("Please, enter the name of the token you are looking in order to receive a list of possible matches: ")
+    clear_terminal()
     token_matches = []
     try:
         with open("tokens.txt", "r") as file:
@@ -124,6 +142,7 @@ def search_token():
 
 
 def check_price_from_date():
+    clear_terminal()
     try:
         print()
         # Get token from user (the function checks that it exists too)
@@ -145,18 +164,25 @@ def check_price_from_date():
         # Display the price in usd / eur. Price has ton of decimals, round to 4.
         # data['market_data']['current_price']['usd']
         # data['market_data']['current_price']['eur']
-        print()
-        print(f"The price of {data['name']} on the {user_date}")
+        clear_terminal()
+        print(f"The price of {data['name']} on the {user_date} was ${data['market_data']['current_price']['usd']:4f} / €{data['market_data']['current_price']['eur']:4f}")
         # The :4f might be an issue for tokens where the price has a lot of 0 on preceding the first non-zero decimal digits
-        print(f"was ${data['market_data']['current_price']['usd']:4f} / €{data['market_data']['current_price']['eur']:4f}")
         return 0
     except:
         return 1
 
 
-def check_current_price():
-    try:
+def check_current_price(argument=None):
+    clear_terminal()
+    if argument != None:
+        try:
+            user_token = argument
+        except:
+            print("Invalid token")
+            return 1
+    else:
         user_token = get_user_token()
+    try:
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={user_token}&vs_currencies=usd%2Ceur"
         response = requests.get(url)
         if response.status_code != 200:
@@ -172,6 +198,7 @@ def check_current_price():
 
 
 def check_btc_price():
+    clear_terminal()
     try:
         url = f"https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd%2Ceur"
         response = requests.get(url)
@@ -192,6 +219,7 @@ def print_blank_space():
 
 
 def get_user_token():
+    clear_terminal()
     try:
         file = open("tokens.txt", "r")
     # If tokens.txt hasn't been generated yet, generate it
@@ -225,9 +253,10 @@ def get_user_token():
         if break_while == True:
             break
         else:
+            clear_terminal()
             print("No token has been found with that name")
     # I added spaces before to the string to isolate the name, I need to remove them now (.strip())
-    return user_token.strip()
+    return user_token.strip().lower()
 
 
 
@@ -236,6 +265,7 @@ def get_user_token():
 
 
 def get_user_date():
+    clear_terminal()
     while True:
         user_date = input("Enter the date in dd-mm-yyyy format to check the price of the token: ")
         matches = re.search(r"^(\d\d)-(\d\d)-(\d\d\d\d)$", user_date)
@@ -245,22 +275,33 @@ def get_user_date():
                 month = int(matches.group(2))
                 year = int(matches.group(3))
                 if day < 0 or day > 31:
-                    print("invalid day")
+                    clear_terminal()
+                    print("Invalid day")
                     raise ValueError
                 if month < 0 or month > 12:
-                    print("invalid month")
+                    clear_terminal()
+                    print("Invalid month")
                     raise ValueError
                 if year < 2000:
-                    print("invalid year")
+                    clear_terminal()
+                    print("Invalid year")
                     raise ValueError
                 break
             # If there are issues unpacking I should get a ValueError
             except ValueError:
+                clear_terminal()
                 print("Incorrect Format")
     # If we reach this point, we passed the first input control
     # and we have a user_date that is in correct format
     # (not necessarily valid for the token we are looking for)
     return user_date
+
+
+def clear_terminal():
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
 
 
 if __name__ == "__main__":
